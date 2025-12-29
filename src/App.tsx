@@ -28,9 +28,7 @@ export default function App() {
   const [result, setResult] = useState<string | null>(null);
   const [angle, setAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
-  const isLoadedRef = useRef(false);
   
-
   /* =======================
      Load options once
      ======================= */
