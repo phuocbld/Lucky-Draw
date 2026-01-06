@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 const STORAGE_KEY = "lucky_wheel_options";
+const SHARE_KEY = "data";
 
 const COLORS = [
   "#ef4444",
@@ -16,44 +17,63 @@ const COLORS = [
   "#14b8a6",
 ];
 
+const decodeSharedOptions = (raw: string | null): string[] | null => {
+  if (!raw) return null;
+  try {
+    const decoded = atob(decodeURIComponent(raw));
+    const parsed = JSON.parse(decoded);
+    if (Array.isArray(parsed) && parsed.every((i) => typeof i === "string")) {
+      return parsed;
+    }
+  } catch (e) {
+    console.warn("Không thể đọc dữ liệu chia sẻ", e);
+  }
+  return null;
+};
+
+const loadInitialOptions = (): string[] => {
+  const shared = decodeSharedOptions(
+    new URLSearchParams(window.location.search).get(SHARE_KEY)
+  );
+  if (shared?.length) return shared;
+
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) return JSON.parse(saved);
+  return ["Đi xem phim", "Đi cà phê", "Đi du lịch"];
+};
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [options, setOptions] = useState<string[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-    return ["Đi xem phim", "Đi cà phê", "Đi du lịch"];
-  });
+  const [options, setOptions] = useState<string[]>(loadInitialOptions);
   const [newOption, setNewOption] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [angle, setAngle] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   
-  /* =======================
-     Load options once
-     ======================= */
-
-
   /* =======================
      Save + redraw
      ======================= */
-     useEffect(() => {
-      if (!canvasRef.current || options.length === 0) return;
-    
-      // đợi browser render xong canvas
-      requestAnimationFrame(() => {
-        drawWheel();
-      });
-     }, [options, angle]);
-  
-     useEffect(() => {
-      console.log("🔥 SAVE OPTIONS:", options);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
-     }, [options]);
-  
-    
-    
-    
+  useEffect(() => {
+    if (!canvasRef.current || options.length === 0) return;
+
+    // đợi browser render xong canvas
+    requestAnimationFrame(() => {
+      drawWheel();
+    });
+  }, [options, angle]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
+  }, [options]);
+
+  useEffect(() => {
+    if (!status) return;
+    const t = setTimeout(() => setStatus(null), 2400);
+    return () => clearTimeout(t);
+  }, [status]);
 
   /* =======================
      Draw Wheel
@@ -140,6 +160,8 @@ export default function App() {
     if (!newOption.trim()) return;
     setOptions([...options, newOption.trim()]);
     setNewOption("");
+    setResult(null);
+    setAngle(0);
   };
 
   const editOption = (index: number) => {
@@ -151,7 +173,61 @@ export default function App() {
   };
 
   const deleteOption = (index: number) => {
-    setOptions(prev => prev.filter((_, i) => i !== index));
+    setOptions((prev) => prev.filter((_, i) => i !== index));
+    setResult(null);
+    setAngle(0);
+  };
+
+  /* =======================
+     Import / Export / Share
+     ======================= */
+  const exportOptions = () => {
+    const blob = new Blob([JSON.stringify(options, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lucky-wheel-options.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus("Đã tải file JSON để lưu/đem sang thiết bị khác");
+  };
+
+  const importOptions = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (
+          Array.isArray(parsed) &&
+          parsed.length &&
+          parsed.every((o) => typeof o === "string")
+        ) {
+          setOptions(parsed);
+          setStatus("Đã nạp danh sách từ file");
+          setResult(null);
+          setAngle(0);
+        } else {
+          setStatus("File không hợp lệ");
+        }
+      } catch {
+        setStatus("Không đọc được file JSON");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const shareLink = async () => {
+    const encoded = encodeURIComponent(btoa(JSON.stringify(options)));
+    const url = `${window.location.origin}${window.location.pathname}?${SHARE_KEY}=${encoded}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setStatus("Đã sao chép link chia sẻ");
+    } catch {
+      setStatus("Không sao chép được, hãy copy thủ công");
+    }
   };
 
   return (
@@ -176,6 +252,21 @@ export default function App() {
         <div className="option-panel">
           <h3>⚙️ Quản lý option</h3>
 
+          <div className="persist-actions">
+            <button onClick={exportOptions}>Tải xuống JSON</button>
+            <button onClick={() => fileInputRef.current?.click()}>
+              Tải JSON lên
+            </button>
+            <button onClick={shareLink}>Sao chép link chia sẻ</button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              style={{ display: "none" }}
+              onChange={(e) => importOptions(e.target.files?.[0])}
+            />
+          </div>
+
           <div className="option-input">
             <input
               value={newOption}
@@ -196,6 +287,12 @@ export default function App() {
               </div>
             ))}
           </div>
+
+          <p className="helper-text">
+            Dữ liệu tự lưu trong trình duyệt. Dùng file hoặc link chia sẻ để
+            chuyển sang thiết bị khác.
+          </p>
+          {status && <div className="status-toast">{status}</div>}
         </div>
       </div>
     </div>
