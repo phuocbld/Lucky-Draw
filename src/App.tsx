@@ -232,6 +232,10 @@ export default function App() {
 
   return (
     <div className="app">
+      <header className="page-header">
+        <h1>My love of David Bành Lưu</h1>
+        <p>Vòng quay may mắn — lưu option trên trình duyệt, chia sẻ bằng file/link</p>
+      </header>
       <div className="container">
         {/* Wheel */}
         <div className="wheel-area">
