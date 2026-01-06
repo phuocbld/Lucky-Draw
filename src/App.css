@@ -4,16 +4,22 @@
   width: 100vw;
   background: radial-gradient(circle at top, #1e293b, #020617);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   color: #fff;
   font-family: system-ui, sans-serif;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .container {
   display: flex;
-  gap: 40px;
+  gap: 32px;
   align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1080px;
 }
 
 /* ========== WHEEL ========== */
@@ -32,6 +38,8 @@
 canvas {
   border-radius: 50%;
   background: #020617;
+  width: min(360px, 80vw);
+  height: min(360px, 80vw);
 }
 
 .spin-btn {
@@ -53,7 +61,7 @@ canvas {
 
 /* ========== OPTION PANEL ========== */
 .option-panel {
-  width: 320px;
+  width: min(340px, 90vw);
   background: rgba(15, 23, 42, 0.85);
   border-radius: 18px;
   padding: 20px;
@@ -115,4 +123,23 @@ canvas {
   background: #4f46e5;
   color: #fff;
   font-size: 12px;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .option-panel {
+    width: min(420px, 100%);
+  }
+}
+
+@media (max-width: 520px) {
+  .spin-btn {
+    width: 100%;
+    text-align: center;
+  }
 }
