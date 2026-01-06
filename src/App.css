@@ -21,6 +21,9 @@
 .page-header h1 {
   margin: 0;
   font-size: 24px;
+  background: linear-gradient(120deg, #7c3aed, #22d3ee, #f59e0b);
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .page-header p {
